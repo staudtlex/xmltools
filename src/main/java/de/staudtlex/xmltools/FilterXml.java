@@ -43,8 +43,8 @@ import org.w3c.dom.NodeList;
 
 
 /**
- * FilterXml takes a directory of XML files and returns those files that contain
- * nodes matching a user-defined XPath.
+ * FilterXml provides a method to filter XML files and return those files that
+ * contain nodes matching a user-defined XPath.
  */
 public class FilterXml {
   /**
@@ -54,26 +54,38 @@ public class FilterXml {
    * @param expr    compiled XPath expression selecting desired nodes
    * @return a list of nodes matching the XPath
    */
-  public static NodeList findInXml(File xmlFile, XPathExpression expr) {
+  public static NodeList findInXml(final File xmlFile,
+      final XPathExpression expr) {
     try {
-      DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory
+      final DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory
           .newInstance();
       docBuilderFactory.setNamespaceAware(true);
-      DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
-      Document doc = docBuilder.parse(xmlFile);
+      final DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
+      final Document doc = docBuilder.parse(xmlFile);
       doc.getDocumentElement().normalize();
       return (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       e.printStackTrace();
     }
     return null;
   }
 
+  /**
+   * Implements the NamespaceContext-interface. This implementation differs from
+   * the default NamespaceContext in that it dynamically constructs a context
+   * from a XML namespace declaration string of the form 'xmlns:prefix="URI"'.
+   */
   public static class FilterXmlNamespaceContext implements NamespaceContext {
     private final String namespacePrefix;
     private final String namespace;
 
-    public FilterXmlNamespaceContext(String xmlns) {
+    /**
+     * Creates a FilterXmlNamespaceContext instance from a given XML namespace
+     * string.
+     * 
+     * @param xmlns XML namespace string of the form 'xmlns:prefix="URI"'
+     */
+    public FilterXmlNamespaceContext(final String xmlns) {
       if (!xmlns.equals("")) {
         this.namespacePrefix = xmlns.split(":", 2)[1].split("=", 2)[0];
         this.namespace = xmlns.split(":", 2)[1].split("=", 2)[1];
@@ -84,7 +96,7 @@ public class FilterXml {
     }
 
     @Override
-    public String getNamespaceURI(String prefix) {
+    public String getNamespaceURI(final String prefix) {
       if (prefix.equals(namespacePrefix)) {
         return namespace;
       }
@@ -92,16 +104,25 @@ public class FilterXml {
     }
 
     @Override
-    public String getPrefix(String namespaceURI) {
+    public String getPrefix(final String namespaceURI) {
       return null;
     }
 
     @Override
-    public Iterator<String> getPrefixes(String namespaceURI) {
+    public Iterator<String> getPrefixes(final String namespaceURI) {
       return null;
     }
   }
 
+  /**
+   * Filters XML files that contain nodes matching a given XPath expression and
+   * copies the matching files to a user-specified directory.
+   * 
+   * @param args (1) the path to the directory containing the XML files to be
+   *               filtered, (2) the destination directory for the files whose
+   *               nodes match the XPath expression, (3) the XPath expression to
+   *               be matched, (4) an (optional) XML namespace declaration
+   */
   public static void main(String[] args) {
     if (args.length < 3) {
       System.err.println("FilterXml requires at least 3 arguments.");
@@ -109,9 +130,9 @@ public class FilterXml {
     }
 
     // Get filepaths and list of relevant XML-files
-    Path inDir = Paths.get(args[0]);
-    Path outDir = Paths.get(args[1]);
-    String query = args[2];
+    final Path inDir = Paths.get(args[0]);
+    final Path outDir = Paths.get(args[1]);
+    final String query = args[2];
 
     // Get namespace
     String xmlns = "";
@@ -136,7 +157,7 @@ public class FilterXml {
           .filter(f -> Files.isRegularFile(f) && !f.toFile().isHidden())
           .filter(f -> f.getFileName().toString().endsWith("xml"))
           .collect(Collectors.toList());
-    } catch (IOException e) {
+    } catch (final IOException e) {
       // e.printStackTrace();
       System.err.println("An error occurred while opening "
           + inDir.getFileName().toString() + ".");
@@ -149,19 +170,19 @@ public class FilterXml {
 
     try {
       // Compile XPath query to XPath expression
-      XPath xpath = XPathFactory.newInstance().newXPath();
+      final XPath xpath = XPathFactory.newInstance().newXPath();
       xpath.setNamespaceContext(new FilterXmlNamespaceContext(xmlns));
-      XPathExpression expr = xpath.compile(query);
+      final XPathExpression expr = xpath.compile(query);
 
       // Retrieve XPath expression result nodes from each XML file
-      LinkedHashMap<Path, NodeList> xpathMatches = new LinkedHashMap<>();
-      for (Path p : fileList) {
+      final LinkedHashMap<Path, NodeList> xpathMatches = new LinkedHashMap<>();
+      for (final Path p : fileList) {
         xpathMatches.put(p, findInXml(p.toFile(), expr));
       }
 
       // Keep only those files where at least one node matches the XPath
       // expression
-      List<Path> keepFiles = xpathMatches.entrySet().stream()
+      final List<Path> keepFiles = xpathMatches.entrySet().stream()
           .filter(x -> x.getValue().getLength() > 0).map(x -> x.getKey())
           .collect(Collectors.toList());
       if (keepFiles.size() == 0) {
@@ -177,7 +198,7 @@ public class FilterXml {
               Paths.get(outDir.getFileName().toString(),
                   f.getFileName().toString()),
               StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
+        } catch (final IOException e) {
           // e.printStackTrace();
           System.err.println(
               "An error occurred while copying. Some files may not have been copied to destination.");
